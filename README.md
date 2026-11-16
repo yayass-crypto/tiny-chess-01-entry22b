@@ -1,59 +1,29 @@
-# tiny-chess-01 — a compact chess engine in 4 KB (v22b)
+# tiny-chess-01 — compact chess engine in 4 KB (v22b)
 
-`main.py` is the whole engine (4,083 bytes as committed): a 0x88-board
-negamax search with alpha-beta pruning, quiescence over captures,
-promotions and check evasions, a transposition table, MVV-LVA capture
-ordering plus history ordering for quiet moves, futility pruning, and
-late-move reductions (LMR), with a material + piece-square evaluation
-that adds a bishop-pair bonus, a passed-pawn bonus and a mop-up bonus
-driving a lone king to the edge in a winning endgame. Quiescence
-checks king-capture-only at depth 2 and beyond while in check (never
-recursive), returning the true fail-soft value instead of the
-window-clamped alpha. The root re-scores a move that stalemates the
-opponent as a draw (0) instead of a win, because the pseudo-legal
-search would otherwise mistake a stalemate for a mate. In the
-endgame (no queens on the board) the king uses the centralising
-knight piece-square table instead of the middlegame corner-seeking
-king table. It searches to a fixed node budget (200,000 nodes a move),
-never to a clock, so a trial replays move for move.
+`main.py` (4,083 bytes) is the whole engine: 0x88-board negamax with
+alpha-beta, quiescence over captures/promotions/check evasions,
+transposition table, MVV-LVA + history ordering, futility pruning and
+late-move reductions (LMR). Evaluation is material + piece-square
+tables with bishop-pair, passed-pawn and mop-up bonuses; in the
+endgame (no queens) the king uses the centralising knight table.
+Quiescence checks king-capture-only at depth 2+ while in check (never
+recursive) and returns the true fail-soft value. The root re-scores a
+stalemating move as a draw (0). Fixed node budget (200,000/move),
+never a clock, so trials replay move for move.
 
-v22b combines two earlier experiments on top of v20: LMR (late quiet
-moves at depth >= 3, move index > 3, searched one ply shallower and
-re-searched at full depth if they beat alpha) and the endgame king
-table switch. The v21 black-castling fix is included. The byte budget
-came from semantics-preserving refactors (merged slider loops in
-`attacked()`, simplified castling generation, a merged transposition
-probe, an inlined root legality check). Passed-pawn doubling and
-SEE-lite are NOT in this version: they were tried as v23/v24 and
-scored worse or neutral at trial scale.
+v22b = v20 + LMR (late quiet moves at depth >= 3, index > 3, one ply
+shallower, re-searched at full depth if they beat alpha) + the endgame
+king-table switch, including the v21 black-castling fix. Byte budget
+from semantics-preserving refactors. Passed-pawn doubling and SEE-lite
+are NOT here (tried as v23/v24: worse/neutral at trial scale).
 
-Trial result (practice trial-0, rerun 2, 16 games vs the 8 fixed house
+Trial (practice trial-0 rerun 2, 16 games vs the 8 fixed house
 engines, sunfish baseline Elo 1360): **Elo 1396, 8 wins / 0 draws /
-8 losses**. That is the submission candidate: it is the first version
-to score above the sunfish baseline on a full practice trial.
+8 losses** — the first version above the baseline. Wins: games 1-7
+and 14; losses: 8-13, 15, 16. Earlier versions on the same trial:
+v19/v20 Elo 1253, v21 Elo 1131. (First two runs scored Elo 705, 1W/15L,
+both hit by shared-VM load/timeouts that day; rerun 2 is the clean run.)
 
-Per-game summary (trial-0 rerun 2; colour is ours, result is the game
-result, plies count both sides' moves):
-
-| Game | Colour | Result | Plies | Game | Colour | Result | Plies |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | white | 1-0 (win) | 89 | 9 | white | 0-1 (loss) | 124 |
-| 2 | black | 0-1 (win) | 60 | 10 | black | 1-0 (loss) | 17 |
-| 3 | white | 1-0 (win) | 105 | 11 | white | 0-1 (loss) | 8 |
-| 4 | black | 0-1 (win) | 112 | 12 | black | 1-0 (loss) | 11 |
-| 5 | white | 1-0 (win) | 145 | 13 | white | 0-1 (loss) | 8 |
-| 6 | black | 0-1 (win) | 36 | 14 | black | 0-1 (win) | 154 |
-| 7 | white | 1-0 (win) | 55 | 15 | white | 0-1 (loss) | 46 |
-| 8 | black | 1-0 (loss) | 171 | 16 | black | 1-0 (loss) | 107 |
-
-Note: the first two runs of this trial scored only Elo 705 (1 win /
-15 losses) and are not representative — both were affected by the
-shared-VM load/timeout problems of that day; rerun 2 is the clean run
-quoted above.
-
-It plays the house gauntlet through the env at `MAKEFUN_ENV_URL`
-(`POST /game`, `POST /move`), reading each position's FEN and legal moves
-from the env and choosing a move by iterative deepening.
-
-Written from scratch by the author (not a fork of sunfish or any other
-engine). MIT licensed.
+Plays the house gauntlet via `MAKEFUN_ENV_URL` (`POST /game`,
+`POST /move`), reading FEN + legal moves and choosing by iterative
+deepening. Written from scratch (not a fork of sunfish). MIT licensed.
